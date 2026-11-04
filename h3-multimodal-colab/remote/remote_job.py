@@ -248,7 +248,7 @@ def run_video(j):
     mode = j.get("mode", "ref")
     body = {"mode": {"ref": "ref", "frames": "frames", "first_last": "frames", "text": "text"}[mode],
             "prompt": j["prompt"], "seconds": j.get("seconds", 10), "aspect": j.get("aspect", "auto"),
-            "resolution": j.get("resolution", "720P"), "intensity": j.get("intensity", "off"),
+            "resolution": j.get("resolution", "480P"), "intensity": j.get("intensity", "off"),
             "fast": j.get("fast", True), "skill": j.get("skill", ""), "seed": j.get("seed")}
     if body["mode"] == "ref":
         body["tray"] = [{"id": library_id(r)} for r in j.get("inputs", [])]

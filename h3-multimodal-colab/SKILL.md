@@ -29,6 +29,12 @@ description: Generate pictures, talking videos, video extensions and voice (TTS)
 4. **會從哪裡抓什麼**：GitHub 的 ComfyUI、3 個節點組、H3 Toybox；Hugging Face 的 H3 模型（Comfy-Org、OliviaRossi PRISM、PrunaAI P-H3-Image、dseditor 鏡像的 LoRA）。**全部下載到 Colab 上，不佔這台電腦的空間。**
 5. **何時要登入**：只有第一次。你會給他一個 Google 網址，他用**有 AI Pro 的帳號**登入、按允許，把頁面上的授權碼貼回對話。token 存在 `~/.config/colab-cli/token.json`，之後不用再登入。
 
+說明完、使用者同意安裝後，再問兩個選擇（**沒有回答就用預設**），記住他的答案，之後每批照用：
+- **要不要安裝生圖？**（預設：**不裝**。使用者已經有別的生圖工具時就不需要；裝的話每次開機多下載約 10 GB）
+  要的話，之後的 `h3run.py run` 都加 `--with-pictures`。沒裝的時候，批次裡有圖片工作仍會自動下載，但先問過使用者。
+- **要用更快的 G4 嗎？**（預設：**L4**。G4 約每小時 11 點，L4 約 1.5 點）
+  選 G4 時要告訴使用者：**影片預設會是 720P**（L4 預設 480P）。
+
 安裝：照 repo 的 `INSTALL_FOR_AGENTS.md`（裝 uv → google-colab-cli 0.7.4 → Windows 補丁 → 放好這個 skill）。
 登入：
 ```
@@ -45,7 +51,12 @@ python scripts/h3run.py check              # 看到剩餘運算單元＝成功
 2. **準備輸入檔**：角色照、場景圖、參考聲音放進一個工作資料夾，例如 `h3job/inputs/`。
 3. **寫提示詞**：照 `references/prompt-guide.md`。影片一定要寫完整的英文六段式（短提示詞會讓 H3 在畫面上燒字幕）。
 4. **寫 `manifest.json`**：格式見 `references/manifest.md`。整批一次送，不要一個一個開機。
-5. **確認花費**：跟使用者說這批大概幾段、用哪種 GPU、預估時間；第一次的批次先用 L4、480P、5 秒試一段。
+5. **確認規格與花費**：
+   - **兩支以上的影片，一定要先跟使用者確認規格**：解析度（480P／720P）、直式或橫式（9:16／16:9）、每段秒數。
+     長任務生成時間很長，規格錯了要整批重來。`h3run.py` 在兩支以上影片時**沒有 `--confirmed` 不會開機**，
+     它會先印出這批的摘要（數量、總秒數、解析度、比例、L4 的時間估計），把那段摘要給使用者看，確認後再加 `--confirmed`。
+   - 沒指定解析度時：L4 用 480P、G4 用 720P。
+   - 第一次的批次先用 L4、480P、5 秒試一段。
 6. **送出**：
    ```
    python scripts/h3run.py run h3job/manifest.json --gpu L4

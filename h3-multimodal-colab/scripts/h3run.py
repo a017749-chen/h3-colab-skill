@@ -240,12 +240,38 @@ def skip_finished(m, base, force):
     return dict(m, jobs=jobs)
 
 
+DEFAULT_RES = {"L4": "480P", "G4": "720P", "A100": "720P", "H100": "720P"}  # the creator: G4 means 720P by default
+
+
+def spec_summary(m, gpu):
+    vids = [j for j in m["jobs"] if j["type"] == "video"]
+    secs = sum(float(j.get("seconds", 10)) for j in vids)
+    shapes = sorted({j.get("aspect", "auto") for j in vids})
+    res = sorted({j.get("resolution") for j in vids})
+    kinds = {t: sum(1 for j in m["jobs"] if j["type"] == t) for t in TYPES}
+    est = ""
+    if gpu == "L4":  # measured 2026-11-04: a 5 s 480P Ref2VA clip took 160 s on L4 (720P has 2.25x the pixels)
+        per = {"480P": 32, "720P": 72}
+        est = f"；L4 估計影片約 {sum(per.get(j.get('resolution'), 72) * float(j.get('seconds', 10)) for j in vids) / 60:.0f} 分鐘（不含開機與下載模型）"
+    return (f"圖片 {kinds['image']}、影片 {kinds['video']}（共 {secs:g} 秒，解析度 {'/'.join(res) or '-'}，"
+            f"比例 {'/'.join(shapes) or '-'}）、配音 {kinds['tts']}，GPU {gpu}{est}")
+
+
 def run(args):
     m, base = load_manifest(args.manifest)
     m = skip_finished(m, base, args.force)
     gpu = (args.gpu or m.get("gpu") or "L4").upper()
     if gpu not in GPUS:
         sys.exit(f"GPU 只接受 {GPUS}（打錯字 colab 會默默開成 A100）")
+    for j in m["jobs"]:  # resolution not given: the GPU's default (L4 480P, G4 720P)
+        if j["type"] == "video" and not j.get("resolution"):
+            j["resolution"] = DEFAULT_RES[gpu]
+    if args.with_pictures:
+        m["install_pictures"] = True
+    if sum(1 for j in m["jobs"] if j["type"] == "video") >= 2 and not args.confirmed:
+        print("📋 這批：" + spec_summary(m, gpu))
+        sys.exit("兩支以上的影片要先跟使用者確認規格（解析度、直式或橫式、秒數），確認後再加 --confirmed 送出。")
+    print("📋 這批：" + spec_summary(m, gpu), flush=True)
     if not token_ok():
         sys.exit("還沒登入 Colab：先跑 python colab_login.py url，照指示登入")
     units, _ = usage()
@@ -369,6 +395,8 @@ def main():
     r.add_argument("--stop-after", action="store_true", help="做完馬上釋放 GPU")
     r.add_argument("--max-minutes", type=float, default=120)
     r.add_argument("--force", action="store_true", help="out/ 裡已經有的也重做")
+    r.add_argument("--with-pictures", action="store_true", help="這次開機也下載生圖模型（約多 10 GB）")
+    r.add_argument("--confirmed", action="store_true", help="使用者已經確認過規格（兩支以上影片必填）")
     sub.add_parser("sessions")
     k = sub.add_parser("keep")
     k.add_argument("--session", required=True)
