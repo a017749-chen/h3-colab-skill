@@ -31,6 +31,12 @@ AI 會先跟你說明，你同意才安裝。接著問你兩件事（不回答�
 以及**要不要用更快的 G4**（預設 L4；選 G4 的話影片預設 720P，L4 預設 480P）。
 一次要生兩支以上的影片時，AI 會先跟你確認解析度、直式或橫式、秒數，確認後才開始。安裝完只需要**登入一次**：AI 給你一個 Google 網址，用有 AI Pro 的帳號登入、按允許，把畫面上的授權碼貼回對話。
 
+## 有顯示卡？也可以在自己電腦上跑
+
+裝好 **ComfyUI Desktop**（https://comfy.org/download）、有 16 GB 以上的 NVIDIA 顯示卡，就可以改成**本地版**：
+不用 Colab、不用登入、不用等 GPU，模型只下載一次（放在 `C:\Users\<你>\ComfyUI-Shared\models`），影片預設 480P。
+AI 開始時會問你要用 Colab 還是本地。完整說明：**[localguide.md](localguide.md)**。
+
 ## 需要什麼
 
 | | |
@@ -72,12 +78,14 @@ AI 會先跟你說明，你同意才安裝。接著問你兩件事（不回答�
 h3-multimodal-colab/          ← 裝進 AI 的 skill
   SKILL.md                    流程與判準（影片模式、動作強度、TTS…）
   scripts/h3run.py            本機：檢查、開機、上傳、監看、下載、關機
+  scripts/h3local.py          本地版：用 ComfyUI Desktop 生成（見 localguide.md）
   scripts/colab_login.py      兩段式登入（AI 給網址 → 你貼授權碼）
   remote/                     在 Colab 上跑：裝環境、下載模型、逐一生成
   workflows/h3_tts32_api.json H3 32×32 配音工作流（只解碼聲音）
   references/                 manifest 格式、提示詞寫法、排錯
 install/                      install.ps1（Windows）、install.sh（macOS／Linux）
 INSTALL_FOR_AGENTS.md         給 AI 看的安裝步驟
+localguide.md                 本地版（ComfyUI Desktop）說明
 ```
 
 ## 授權與來源

@@ -216,7 +216,7 @@ def skip_finished(m, base, force):
     done = {}
     for j in m["jobs"]:
         hit = sorted((base / "out").glob(f"{j['id']}.*"))
-        hit = [h for h in hit if h.suffix in (".png", ".jpg", ".webp", ".mp4", ".wav")]
+        hit = [h for h in hit if h.suffix in (".png", ".jpg", ".webp", ".mp4", ".wav", ".flac")]
         if hit:
             done[j["id"]] = "out/" + hit[0].name
     if not done:

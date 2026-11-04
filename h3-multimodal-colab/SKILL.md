@@ -1,6 +1,6 @@
 ---
 name: h3-multimodal-colab
-description: Generate pictures, talking videos, video extensions and voice (TTS) with MiniMax H3 on the user's own Google Colab GPU, driven entirely from this computer through google-colab-cli. Use when the user asks to 生圖／改圖／生成影片／延伸影片／配音／TTS／讓角色說話／把分鏡生出來, or wants storyboard frames, clips or voice lines made with H3 — including when you yourself have no image or video tool. Needs a Google AI Pro subscription (Colab compute units); the user's computer needs no GPU.
+description: Generate pictures, talking videos, video extensions and voice (TTS) with MiniMax H3 on the user's own Google Colab GPU, driven entirely from this computer through google-colab-cli. Use when the user asks to 生圖／改圖／生成影片／延伸影片／配音／TTS／讓角色說話／把分鏡生出來, or wants storyboard frames, clips or voice lines made with H3 — including when you yourself have no image or video tool. Runs on Google Colab (needs Google AI Pro; the user's computer needs no GPU) or, if the user prefers, on their own ComfyUI Desktop (local mode, scripts/h3local.py).
 ---
 
 # H3 多模態生成（Colab GPU）
@@ -19,7 +19,29 @@ description: Generate pictures, talking videos, video extensions and voice (TTS)
 
 ---
 
-## 0. 第一次使用：先跟使用者說清楚，再安裝
+## 0. 第一次使用：先問在哪裡跑
+
+**第一件事先問使用者**：「要在 Google Colab 上跑，還是用你自己電腦上的 ComfyUI Desktop（本地）？」
+- 本地要提醒：**ComfyUI Desktop 要先自己安裝好並打開**（https://comfy.org/download），而且需要 NVIDIA 顯示卡、
+  16 GB 以上顯示卡記憶體、約 50 GB 硬碟。沒有就用 Colab。
+- 沒回答、或沒有符合條件的顯示卡 → **Colab**。
+- 選了就記住，之後每批照用。使用者中途說「改用本地／改回 Colab」就換。
+
+### 本地版（ComfyUI Desktop）
+完整說明：https://github.com/dseditor/h3-colab-skill/blob/main/localguide.md 。和 Colab 版同一份 manifest、同一套提示詞規則，差別只有：
+沒有 colab-cli、不用登入、不用等 GPU、沒有 15 分鐘保留與關機；影片預設 **480P**。
+```
+python scripts/h3local.py check            # ComfyUI 開了沒、缺哪些模型與節點
+python scripts/h3local.py setup            # 第一次：下載缺的模型（約 50 GB）、節點組、H3 Toybox
+python scripts/h3local.py run h3job/manifest.json [--confirmed]
+```
+- 模型放 `C:\Users\<使用者>\ComfyUI-Shared\models`（ComfyUI Desktop 的預設）；放別處加 `--models-dir`。
+- `setup` 裝了新節點時，照它印出的指令裝節點套件，請使用者**重開 ComfyUI Desktop**，再 `check`。
+- 可攜版 ComfyUI 回報不出自己的位置：加 `--comfy-dir <ComfyUI 資料夾>`。
+- **監看**：`run` 每 10 秒印進度，做好一個就放進 `out/`；你也可以直接看 `http://127.0.0.1:8188/queue`。
+- 下面第 1 節的流程照走，只是第 6 步換成 `h3local.py run`，第 8 步不用問保留 GPU。
+
+### Colab 版：先跟使用者說清楚，再安裝
 
 如果 `python scripts/h3run.py check` 找不到 colab 或還沒登入，**先停下來**，用使用者的語言說明這五件事，等對方說「好」才開始：
 

@@ -18,6 +18,11 @@ Before installing anything, explain in the user's language:
 5. **Login**: once. You will show a Google sign-in link; the user signs in **with the AI Pro account**,
    clicks Allow and pastes the code back to you.
 
+Also ask: **Colab, or their own ComfyUI Desktop (local mode)?** Local needs ComfyUI Desktop already installed
+and running (https://comfy.org/download), an NVIDIA GPU with 16 GB+ VRAM and about 50 GB of disk. In local mode
+there is no colab-cli, no login and no compute units: still run Step 2 (it copies the skill), skip Step 3, and
+follow `localguide.md` (`scripts/h3local.py check` -> `setup` -> `run`). No answer -> Colab.
+
 Only continue after the user agrees.
 
 ## Step 2 — Install

@@ -21,7 +21,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# H3JOB_LOCAL_TEST=1 runs the job part against servers already running on a desktop (no install, no downloads)
+# H3JOB_LOCAL_TEST=1 runs the job part against servers already running on a desktop (no install, no downloads);
+# scripts/h3local.py uses it for the local mode (ComfyUI Desktop), together with H3JOB_FETCH and H3JOB_COMFY_INPUT
 LOCAL_TEST = os.environ.get("H3JOB_LOCAL_TEST") == "1"
 JOB = Path(os.environ.get("H3JOB_DIR", "/content/h3job"))
 OUT = JOB / "out"
@@ -228,7 +229,19 @@ def wait_toybox(tid, timeout):
 
 
 def comfy_file(info):
+    if os.environ.get("H3JOB_FETCH") == "1":  # local ComfyUI Desktop: its output folder can be anywhere, so ask it
+        q = urllib.parse.urlencode({"filename": info["filename"], "subfolder": info.get("subfolder", ""),
+                                    "type": info.get("type", "output")})
+        dst = JOB / "fetch" / info["filename"]
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(f"{COMFY_URL}/view?{q}", timeout=300) as r, open(dst, "wb") as f:
+            shutil.copyfileobj(r, f)
+        return dst
     return COMFY / "output" / info.get("subfolder", "") / info["filename"]
+
+
+def comfy_input():
+    return Path(os.environ.get("H3JOB_COMFY_INPUT") or COMFY / "input")
 
 
 def toybox_data():
@@ -282,7 +295,7 @@ def run_tts(j):
     for k, rel in enumerate(j.get("voices", [])[:3]):  # <Audio N>: voice-timbre references, in order
         src = OUT / STATE["jobs"][rel[1:]]["file"] if rel.startswith("@") else JOB / "inputs" / rel
         name = f"h3skill_{j['id']}_{k}{Path(src).suffix}"
-        shutil.copy(str(src), str(COMFY / "input" / name))
+        shutil.copy(str(src), str(comfy_input() / name))
         wf[f"ra{k}"] = {"class_type": "LoadAudio", "inputs": {"audio": name}}
         wf["7"]["inputs"][f"ref_audios.ref_audio_{k}"] = [f"ra{k}", 0]
     pid = call(COMFY_URL + "/prompt", {"prompt": wf, "client_id": "h3skill"})["prompt_id"]
@@ -296,6 +309,8 @@ def run_tts(j):
             a = next(o["audio"][0] for o in h["outputs"].values() if o.get("audio"))
             flac = comfy_file(a)
             wav = flac.with_suffix(".wav")
+            if not shutil.which("ffmpeg"):  # a desktop without ffmpeg: hand over the FLAC as it is
+                return flac, {"seconds": j.get("seconds", 10)}
             sh(["ffmpeg", "-v", "error", "-y", "-i", str(flac), str(wav)])
             return wav, {"seconds": j.get("seconds", 10)}
         time.sleep(2)
