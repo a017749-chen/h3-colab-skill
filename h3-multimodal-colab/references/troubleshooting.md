@@ -3,7 +3,7 @@
 先跑 `python scripts/h3run.py check`，看三件事：colab 指令在不在、有沒有登入、剩幾點。
 
 ## 一定要記得的：沒關的 GPU 會一直扣點
-- `h3run.py run` 結束時會自動 `stop`（除非加了 `--keep`），最後還會列出帳號上還開著的 runtime。
+- `h3run.py run` 順利做完時，GPU 先留 15 分鐘（`--idle-minutes`）等下一批，由本機的獨立計時器到時自動 `stop`；失敗或中斷的批次馬上 `stop`。計時器的紀錄在 `~/.config/h3skill/keep/<session>.log`。
 - 本機程式被強制中斷、電腦睡著、網路斷掉時，**遠端那台不會自己停**。回來第一件事：
   ```
   python scripts/h3run.py sessions

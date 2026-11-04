@@ -69,6 +69,81 @@ def sessions():
     return re.findall(rf"({PREFIX}[\w-]+)", out), out.strip()
 
 
+# ---------------------------------------------------------------- keep-alive (the GPU waits for the next batch)
+KEEP = Path.home() / ".config" / "h3skill" / "keep"
+
+
+def keep_file(session):
+    return KEEP / f"{session}.json"
+
+
+def set_keep(session, expires, pid=None):
+    """expires = epoch seconds, or None while a batch is running (the watchdog never stops a busy GPU)."""
+    KEEP.mkdir(parents=True, exist_ok=True)
+    old = json.loads(keep_file(session).read_text(encoding="utf-8")) if keep_file(session).exists() else {}
+    keep_file(session).write_text(json.dumps({"session": session, "expires": expires,
+                                              "watchdog_pid": pid or old.get("watchdog_pid")}), encoding="utf-8")
+
+
+def drop_keep(session):
+    keep_file(session).unlink(missing_ok=True)
+
+
+def pid_alive(pid):
+    if not pid:
+        return False
+    if os.name == "nt":
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def start_watchdog(session):
+    """A detached local process that releases the GPU when the keep time runs out, even after the agent's turn
+    (or the whole chat) has ended. One per session."""
+    info = json.loads(keep_file(session).read_text(encoding="utf-8"))
+    if pid_alive(info.get("watchdog_pid")):
+        return
+    kw = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+    if os.name == "nt":
+        kw["creationflags"] = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    else:
+        kw["start_new_session"] = True
+    p = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "_watchdog", "--session", session], env=ENV, **kw)
+    set_keep(session, info.get("expires"), p.pid)
+
+
+def watchdog(session):
+    log = KEEP / f"{session}.log"
+
+    def say(msg):
+        with log.open("a", encoding="utf-8") as f:
+            f.write(time.strftime("%m-%d %H:%M:%S ") + msg + "\n")
+
+    say("watchdog started")
+    while True:
+        time.sleep(30)
+        if not keep_file(session).exists():
+            say("keep file removed (stopped by hand): exit")
+            return
+        info = json.loads(keep_file(session).read_text(encoding="utf-8"))
+        if info.get("expires") is None or time.time() < info["expires"]:
+            continue
+        st = poll(session)
+        if st and st.get("alive"):  # a batch started meanwhile: wait for it
+            say("time is up but a batch is running: wait")
+            continue
+        say("time is up: releasing the GPU")
+        colab("stop", "-s", session, timeout=300, check=False)
+        drop_keep(session)
+        say("released")
+        return
+
+
 # ---------------------------------------------------------------- manifest
 def load_manifest(path):
     path = Path(path).resolve()
@@ -190,6 +265,8 @@ def run(args):
         print(f"♻️ 沿用還開著的 {session}（模型已經在上面，可以省下安裝和下載）", flush=True)
     t0 = time.time()
     results = {"session": session, "gpu": gpu, "jobs": {}}
+    set_keep(session, None)  # busy: an earlier batch's watchdog must not stop this one
+    finished = False
     try:
         remote_exec(session, "import os\nos.makedirs('/content/h3job/inputs', exist_ok=True)\nprint('ok')")
         for f in ("remote_job.py",):
@@ -250,18 +327,28 @@ def run(args):
                     if not missing:
                         break
                 results.update(stage=st.get("stage"), error=st.get("error"))
+                finished = True
                 break
     finally:
         results["minutes"] = round((time.time() - t0) / 60, 1)
         (out_dir / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
-        if created and not args.keep or args.stop_after:
+        if args.stop_after or not finished or args.idle_minutes <= 0:
+            # an interrupted run is never left running: nobody knows what state that GPU is in
             print(f"🛑 釋放 GPU：{session}", flush=True)
             colab("stop", "-s", session, timeout=300, check=False)
+            drop_keep(session)
         else:
-            print(f"⏸️ {session} 保持開著（要延伸或補拍可以沿用：--session {session}）。用完記得 stop！", flush=True)
-        left, _ = sessions()
+            set_keep(session, time.time() + args.idle_minutes * 60)
+            start_watchdog(session)
+            print(f"⏸️ GPU 先留著：{session}（模型都在上面，下一批不用重新下載）", flush=True)
+            print(f"   👉 請問使用者要不要保留。沒有回答的話 {args.idle_minutes:g} 分鐘後自動關閉"
+                  f"（L4 一小時約 1.5 點，G4 約 11 點）。", flush=True)
+            print(f"   接著做：python h3run.py run <manifest> --session {session}", flush=True)
+            print(f"   多留一下：python h3run.py keep --session {session} --minutes 60", flush=True)
+            print(f"   現在關掉：python h3run.py stop --session {session}", flush=True)
+        left = [n for n in sessions()[0] if not keep_file(n).exists()]
         if left:
-            print(f"⚠️ 帳號上還有開著的 runtime：{left}（會持續扣點，不用就 python h3run.py stop --all）", flush=True)
+            print(f"⚠️ 帳號上還有其他開著的 runtime：{left}（會持續扣點，不用就 python h3run.py stop --all）", flush=True)
     bad = {k: v for k, v in results["jobs"].items() if v.get("status") != "done"}
     print(f"✅ 完成 {len(results['jobs']) - len(bad)}/{len(m['jobs'])}，共 {results['minutes']} 分鐘 → {out_dir}", flush=True)
     if bad or results.get("error"):
@@ -277,11 +364,17 @@ def main():
     r.add_argument("manifest")
     r.add_argument("--gpu")
     r.add_argument("--session")
-    r.add_argument("--keep", action="store_true", help="不要釋放 GPU（之後要延伸或補拍）")
-    r.add_argument("--stop-after", action="store_true", help="就算是沿用的 session，做完也釋放")
+    r.add_argument("--idle-minutes", type=float, default=15,
+                   help="做完先留著 GPU 等下一批，幾分鐘沒有新工作就自動關（預設 15；0＝做完馬上關）")
+    r.add_argument("--stop-after", action="store_true", help="做完馬上釋放 GPU")
     r.add_argument("--max-minutes", type=float, default=120)
     r.add_argument("--force", action="store_true", help="out/ 裡已經有的也重做")
     sub.add_parser("sessions")
+    k = sub.add_parser("keep")
+    k.add_argument("--session", required=True)
+    k.add_argument("--minutes", type=float, required=True)
+    w = sub.add_parser("_watchdog")
+    w.add_argument("--session", required=True)
     s = sub.add_parser("stop")
     s.add_argument("--session")
     s.add_argument("--all", action="store_true")
@@ -298,12 +391,24 @@ def main():
         run(a)
     elif a.cmd == "sessions":
         print(sessions()[1])
+        for f in sorted(KEEP.glob("*.json")) if KEEP.exists() else []:
+            info = json.loads(f.read_text(encoding="utf-8"))
+            left = "跑批次中" if info.get("expires") is None else f"{max(0, info['expires'] - time.time()) / 60:.0f} 分鐘後自動關閉"
+            print(f"⏸️ {info['session']}：{left}")
+    elif a.cmd == "keep":
+        minutes = min(a.minutes, 240)  # at most 4 hours: a forgotten GPU still stops by itself
+        set_keep(a.session, time.time() + minutes * 60)
+        start_watchdog(a.session)
+        print(f"⏸️ {a.session} 再留 {minutes:g} 分鐘，之後沒有新工作就自動關閉")
+    elif a.cmd == "_watchdog":
+        watchdog(a.session)
     elif a.cmd == "stop":
         names = sessions()[0] if a.all else [a.session]
         if not names or names == [None]:
             sys.exit("要指定 --session NAME 或 --all")
         for n in names:
             print(n, colab("stop", "-s", n, timeout=300, check=False).strip()[-200:])
+            drop_keep(n)
 
 
 if __name__ == "__main__":
