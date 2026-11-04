@@ -1,0 +1,4 @@
+_localtest/
+_colabtest/
+__pycache__/
+*.pyc
