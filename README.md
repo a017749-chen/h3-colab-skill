@@ -20,6 +20,12 @@ AI 負責理解需求、寫提示詞、整理工作清單、檢查成果；生�
 請照 https://github.com/dseditor/h3-colab-skill/blob/main/INSTALL_FOR_AGENTS.md 幫我安裝 h3-multimodal-colab 這個 skill：開始之前先跟我說明它會做什麼、要什麼訂閱、何時要登入，我同意後再安裝。
 ```
 
+更新到最新版（已經裝過的人）：
+
+```text
+請到 https://github.com/dseditor/h3-colab-skill 抓最新版，重新執行 install 腳本更新 h3-multimodal-colab 這個 skill（不用重新登入），更新完告訴我版本差異。
+```
+
 AI 會先跟你說明，你同意才安裝。安裝完只需要**登入一次**：AI 給你一個 Google 網址，用有 AI Pro 的帳號登入、按允許，把畫面上的授權碼貼回對話。
 
 ## 需要什麼
