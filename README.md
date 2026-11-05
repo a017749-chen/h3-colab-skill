@@ -6,6 +6,9 @@
 - 🎬 **影片**：角色照＋場景圖＋聲音當參考，生成會說話的影片；頭尾格；純文字
 - 🧵 **延伸**：接著上一段往下演，自動接回原片
 - 🎙 **配音（TTS）**：照描述設計聲音，或拿一段聲音當音色參考說新台詞
+- 🎬 **腳本拍片（整合自 AI-movie）**：上傳自己寫好的腳本＋角色／場景設定表＋參考圖，自動規劃每段送哪些圖、每個分鏡誰入鏡、誰說話（畫內／畫外），
+  一次生成 2 分鐘、你確認後才繼續，最後合成單一聲軌、繁中字幕的全片。專門擋掉「人物重複出現」與「配音對不上」。
+  說明：[references/movie-mode.md](h3-multimodal-colab/references/movie-mode.md)
 
 AI 負責理解需求、寫提示詞、整理工作清單、檢查成果；生成全部在 Colab 上跑。
 **你的電腦不需要顯示卡**，AI 本身不會畫圖也沒關係（例如 Claude 也能把整套分鏡畫完）。
@@ -17,13 +20,13 @@ AI 負責理解需求、寫提示詞、整理工作清單、檢查成果；生�
 ## 一行安裝（貼給你的 AI）
 
 ```text
-請照 https://github.com/dseditor/h3-colab-skill/blob/main/INSTALL_FOR_AGENTS.md 幫我安裝 h3-multimodal-colab 這個 skill：開始之前先跟我說明它會做什麼、要什麼訂閱、何時要登入，我同意後再安裝。
+請照 https://github.com/a017749-chen/h3-colab-skill/blob/main/INSTALL_FOR_AGENTS.md 幫我安裝 h3-multimodal-colab 這個 skill：開始之前先跟我說明它會做什麼、要什麼訂閱、何時要登入，我同意後再安裝。
 ```
 
 更新到最新版（已經裝過的人）：
 
 ```text
-請到 https://github.com/dseditor/h3-colab-skill 抓最新版，重新執行 install 腳本更新 h3-multimodal-colab 這個 skill（不用重新登入），更新完告訴我版本差異。
+請到 https://github.com/a017749-chen/h3-colab-skill 抓最新版，重新執行 install 腳本更新 h3-multimodal-colab 這個 skill（不用重新登入），更新完告訴我版本差異。
 ```
 
 AI 會先跟你說明，你同意才安裝。接著問你兩件事（不回答就用預設）：
@@ -80,10 +83,14 @@ h3-multimodal-colab/          ← 裝進 AI 的 skill
   scripts/h3run.py            本機：檢查、開機、上傳、監看、下載、關機
   scripts/h3local.py          本地版：用 ComfyUI Desktop 生成（見 localguide.md）
   scripts/colab_login.py      兩段式登入（AI 給網址 → 你貼授權碼）
+  scripts/h3movie.py          腳本拍片：規劃 → 提示詞草稿 → 檢查 → 收片審核 → 全片合成
+  mvkit/                      AI-movie 的規劃器與工具（腳本、角色對齊、批次審核、自動檢查、接片字幕、MV、YouTube）
   remote/                     在 Colab 上跑：裝環境、下載模型、逐一生成
   workflows/h3_tts32_api.json H3 32×32 配音工作流（只解碼聲音）
-  references/                 manifest 格式、提示詞寫法、排錯
+  references/                 manifest 格式、提示詞寫法、排錯、腳本拍片（movie-mode.md）
 install/                      install.ps1（Windows）、install.sh（macOS／Linux）
+movie/                        AI-movie 的 Colab Notebook、文件（docs/zh-TW、docs/en）、範例腳本與角色表（不會裝進 AI）
+tests/                        pytest：AI-movie 規劃器與腳本拍片流程
 INSTALL_FOR_AGENTS.md         給 AI 看的安裝步驟
 localguide.md                 本地版（ComfyUI Desktop）說明
 ```
@@ -94,6 +101,8 @@ localguide.md                 本地版（ComfyUI Desktop）說明
 - 生成引擎是 [H3 Toybox](https://github.com/dseditor/minimax-h3-colab)（同作者）。
 - [google-colab-cli](https://pypi.org/project/google-colab-cli/)（Google，Apache-2.0）；登入流程照它的 `auth.py`。
 - 模型依各自授權：MiniMax H3（MiniMax H3 Community License，**請先讀**，部分地區另有限制，衍生作品需標示 "Powered by MiniMax H3"）、P-H3-Image（PrunaAI，同上＋Apache-2.0 部分）、各 LoRA 見 [dseditor/minimax-h3-studio-assets](https://huggingface.co/dseditor/minimax-h3-studio-assets)。
+- 腳本拍片與 `mvkit` 來自 [a017749-chen/AI-movie](https://github.com/a017749-chen/AI-movie)（MIT，見 `movie/LICENSE-AI-movie`），其分鏡架構源自 [autoip/autoip-mv-maker](https://github.com/autoip/autoip-mv-maker)（MIT）。
+- 本 repo 是 [dseditor/h3-colab-skill](https://github.com/dseditor/h3-colab-skill) 的分支，加上腳本拍片模式。
 - 前人經驗：[bockybocky/colab-gpu-runner](https://github.com/bockybocky/colab-gpu-runner)（MIT）的 Windows 補丁與排錯原則。
 - H3 官方提示詞指南不轉載，skill 會請 AI 直接讀官方固定版本。
 

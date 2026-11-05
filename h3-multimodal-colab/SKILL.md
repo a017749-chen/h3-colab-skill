@@ -1,6 +1,6 @@
 ---
 name: h3-multimodal-colab
-description: Generate pictures, talking videos, video extensions and voice (TTS) with MiniMax H3 on the user's own Google Colab GPU, driven entirely from this computer through google-colab-cli. Use when the user asks to 生圖／改圖／生成影片／延伸影片／配音／TTS／讓角色說話／把分鏡生出來, or wants storyboard frames, clips or voice lines made with H3 — including when you yourself have no image or video tool. Runs on Google Colab (needs Google AI Pro; the user's computer needs no GPU) or, if the user prefers, on their own ComfyUI Desktop (local mode, scripts/h3local.py).
+description: Generate pictures, talking videos, video extensions and voice (TTS) with MiniMax H3 on the user's own Google Colab GPU, driven entirely from this computer through google-colab-cli. Use when the user asks to 生圖／改圖／生成影片／延伸影片／配音／TTS／讓角色說話／把分鏡生出來, or wants storyboard frames, clips or voice lines made with H3 — including when you yourself have no image or video tool. Also for a whole film from the user's own script (拍片／腳本拍片／分鏡腳本／教學影片／招生影片／OSCE 示範影片／短劇, consistent characters and scenes, reviewed 2 minutes at a time) through scripts/h3movie.py, and for AI-movie's MV, subtitle and YouTube tools in mvkit/. Runs on Google Colab (needs Google AI Pro; the user's computer needs no GPU) or, if the user prefers, on their own ComfyUI Desktop (local mode, scripts/h3local.py).
 ---
 
 # H3 多模態生成（Colab GPU）
@@ -13,6 +13,7 @@ description: Generate pictures, talking videos, video extensions and voice (TTS)
 | `video` | 參考生成（角色照／場景圖／聲音當參考）、頭尾格、純文字，2–15 秒，有聲音 | H3 Ref2VA／FL2VA |
 | `video` + `extend` | 接著上一段影片往下演，成品自動接回原片 | Motion Context |
 | `tts` | 配音：設計聲音，或拿一段聲音當音色參考說新台詞 | H3 32×32（只解碼聲音） |
+| 整部片 | 使用者自己的腳本＋角色表＋參考圖 → 一段段生成、每 2 分鐘審核、合成全片 | `scripts/h3movie.py`（AI-movie 的規劃器）→ 上面的 `video` |
 
 你（大模型）負責**理解需求、寫提示詞、組工作清單、檢查成果**；生成全部在 Colab 上跑。
 所以就算你自己不能生圖，也能照這份 skill 把整套分鏡、影片、配音做完。
@@ -100,6 +101,17 @@ python scripts/h3run.py check              # 看到剩餘運算單元＝成功
 - `python scripts/h3run.py sessions` 會列出開著的 GPU 和各自還剩幾分鐘自動關閉。
 
 ---
+
+### 使用者給的是一整份腳本時：用腳本拍片模式
+腳本超過幾段、要一整部片、角色場景要前後一致、要分批審核 → **不要自己拆段寫 manifest**，照 `references/movie-mode.md`：
+```
+python scripts/h3movie.py plan --script <腳本> --bible <角色表> --refs <參考圖> --film <工作資料夾>
+（你）把 manifest 裡的 <<WRITE …>> 寫成英文 → python scripts/h3movie.py lint --film <工作資料夾>
+python scripts/h3run.py run <工作資料夾>/jobs/batch01/manifest.json --gpu L4 --confirmed
+python scripts/h3movie.py collect / approve / redo --shots 02 / next / assemble --film <工作資料夾>
+```
+規劃器替你決定每段送哪些圖、每個分鏡誰入鏡、誰說話（畫內或畫外）、人數與台詞時間，這些是之前人物重複、配音對不上的原因，
+manifest 裡規劃好的句子不要改。第 2 節的判準照樣適用（對話與示範 `intensity` 一律 `off`）。
 
 ## 2. 任務判準（你要替使用者決定的開關）
 
