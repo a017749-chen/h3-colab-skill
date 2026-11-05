@@ -27,7 +27,7 @@ Only continue after the user agrees.
 
 ## Step 2 — Install
 
-Clone (or download) `https://github.com/dseditor/h3-colab-skill`, then:
+Clone (or download) `https://github.com/a017749-chen/h3-colab-skill`, then:
 
 - Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File install\install.ps1`
 - macOS / Linux: `bash install/install.sh`
@@ -35,6 +35,12 @@ Clone (or download) `https://github.com/dseditor/h3-colab-skill`, then:
 Pass a folder as the first argument if your skills live somewhere unusual
 (e.g. `install.ps1 -SkillsDir C:\path\to\skills`). By default it copies the skill into every agent
 skills folder it finds: `~/.claude/skills`, `~/.codex/skills`, `~/.hermes/skills`, `~/.agents/skills`.
+
+Script-to-film mode (`scripts/h3movie.py`, the AI-movie planner in `mvkit/`) is copied with the skill. Its planning
+runs on the Python standard library; for the extras, tell the user what each adds and install only with their OK:
+`pillow` (reference-picture check), `ffmpeg` on PATH (batch previews and the final film), and optionally
+`faster-whisper` + `opencc-python-reimplemented` (checks every spoken line and its timing) and `opencv-python`
+(counts faces to catch duplicated people).
 
 ## Step 3 — Login (needs the user)
 

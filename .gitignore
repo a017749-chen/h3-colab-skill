@@ -2,3 +2,11 @@ _localtest/
 _colabtest/
 __pycache__/
 *.pyc
+
+# AI-movie: films, media and personal projects stay local
+movie/projects/
+movie/**/*.mp4
+movie/**/*.wav
+movie/**/*.mp3
+.env
+.pytest_cache/
